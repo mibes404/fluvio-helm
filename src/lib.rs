@@ -470,6 +470,8 @@ pub struct InstalledChart {
     pub status: String,
     /// The ID of the chart that is installed
     pub chart: String,
+    /// The namespace where the chart is installed (available in Helm v3.7.2+)
+    pub namespace: String,
 }
 
 #[cfg(test)]
@@ -478,15 +480,19 @@ mod tests {
 
     #[test]
     fn test_parse_get_installed_charts() {
-        const JSON_RESPONSE: &str = r#"[{"name":"test_chart","namespace":"default","revision":"50","updated":"2021-03-17 08:42:54.546347741 +0000 UTC","status":"deployed","chart":"test_chart-1.2.32-rc2","app_version":"1.2.32-rc2"}]"#;
+        const JSON_RESPONSE: &str = r#"[{"name":"test_chart","namespace":"default","revision":"2","updated":"2022-09-15 14:32:56.455129736 +0000 UTC","status":"deployed","chart":"test_chart-1.2.32-rc2","app_version":"1.2.32-rc2"},{"name":"influxdb","namespace":"default","revision":"1","updated":"2022-09-12 07:54:44.505296974 +0000 UTC","status":"deployed","chart":"fluvio-influxdb2-0.0.2","app_version":"2.4.0"}]"#;
         let installed_charts: Vec<InstalledChart> =
             serde_json::from_slice(JSON_RESPONSE.as_bytes()).expect("can not parse json");
-        assert_eq!(installed_charts.len(), 1);
+        assert_eq!(installed_charts.len(), 2);
         let test_chart = installed_charts
             .get(0)
             .expect("can not grab the first result");
         assert_eq!(test_chart.name, "test_chart");
         assert_eq!(test_chart.chart, "test_chart-1.2.32-rc2");
+        assert_eq!(test_chart.app_version, "1.2.32-rc2");
+        assert_eq!(test_chart.revision, "2");
+        assert_eq!(test_chart.status, "deployed");
+        assert_eq!(test_chart.namespace, "default");
     }
 
     #[test]
