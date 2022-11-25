@@ -8,6 +8,7 @@ pub use crate::error::HelmError;
 mod error;
 
 const HTTPS_PROXY_ENV: &str = "HTTPS_PROXY";
+const NO_PROXY_ENV: &str = "NO_PROXY";
 
 /// Installer Argument
 #[derive(Debug)]
@@ -388,6 +389,10 @@ impl HelmClient {
     }
 
     fn apply_config(&self, command: &mut Command) {
+        if let Some(no_proxy) = self.config.no_proxy.as_deref() {
+            command.env(NO_PROXY_ENV, no_proxy);
+        }
+
         if let Some(https_proxy) = self.config.https_proxy.as_deref() {
             command.env(HTTPS_PROXY_ENV, https_proxy);
         }
@@ -403,6 +408,7 @@ pub struct HelmClientBuilder {
 #[derive(Debug, Default)]
 struct Config {
     https_proxy: Option<String>,
+    no_proxy: Option<String>,
 }
 
 impl HelmClientBuilder {
@@ -411,9 +417,15 @@ impl HelmClientBuilder {
         Self::default()
     }
 
-    /// Sets the https proxy to use for helm operations.
+    /// Sets the HTTPS_PROXY environment variable to use for helm operations.
     pub fn https_proxy(mut self, https_proxy: &str) -> Self {
         self.config.https_proxy = Some(https_proxy.to_string());
+        self
+    }
+
+    /// Sets the NO_PROXY environment variable to use for helm operations.
+    pub fn no_proxy(mut self, no_proxy: &str) -> Self {
+        self.config.no_proxy = Some(no_proxy.to_string());
         self
     }
 
@@ -497,16 +509,18 @@ mod tests {
 
     #[test]
     fn can_construct_a_client_with_config() {
+        const EXAMPLE_HOST: &str = "https://example.com";
+        const LOCAL_HOST: &str = "localhost";
+
         let client_result = HelmClientBuilder::new()
-            .https_proxy("https://proxy.example.com")
+            .https_proxy(EXAMPLE_HOST)
+            .no_proxy(LOCAL_HOST)
             .build();
 
         match client_result {
             Ok(client) => {
-                assert_eq!(
-                    client.config.https_proxy,
-                    Some("https://proxy.example.com".to_string())
-                );
+                assert_eq!(client.config.https_proxy.as_deref(), Some(EXAMPLE_HOST));
+                assert_eq!(client.config.no_proxy.as_deref(), Some(LOCAL_HOST));
             }
             Err(_e) => {
                 // OK. This can happen when the machine on which we run the test does not have helm installed.
